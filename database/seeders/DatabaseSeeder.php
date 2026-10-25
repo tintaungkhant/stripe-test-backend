@@ -18,12 +18,17 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        User::factory()->admin()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+        ]);
+
         $user = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
 
-        foreach(range(1, 5) as $i) {
+        foreach (range(1, 5) as $i) {
             Product::create([
                 'name' => "Product $i",
                 'price' => rand(1, 15) * 100,
