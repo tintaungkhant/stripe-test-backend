@@ -21,6 +21,17 @@ class OrderService
     }
 
     /**
+     * @return LengthAwarePaginator<int, Order>
+     */
+    public function paginateAll(?string $status = null, int $perPage = 15): LengthAwarePaginator
+    {
+        return Order::with(['product', 'user'])
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->latest()
+            ->paginate($perPage);
+    }
+
+    /**
      * Create a pending order and a Stripe Checkout session the customer pays through.
      *
      * The price is copied from the product so later price changes don't affect this order.
