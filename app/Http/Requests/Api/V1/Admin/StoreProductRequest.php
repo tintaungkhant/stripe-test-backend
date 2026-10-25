@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\Services\ProductService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -25,6 +26,7 @@ class StoreProductRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0.5', 'max:99999999.99', 'decimal:0,2'],
+            'file_path' => ['nullable', 'string', 'regex:'.ProductService::IMAGE_PATH_PATTERN],
         ];
     }
 }

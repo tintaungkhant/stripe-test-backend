@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Admin\StoreProductImageUploadRequest;
 use App\Http\Requests\Api\V1\Admin\StoreProductRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
@@ -38,6 +39,16 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product): ProductResource
     {
         return new ProductResource($this->productService->update($product, $request->validated()));
+    }
+
+    /**
+     * Hand the admin a presigned URL to upload a product image directly to S3.
+     */
+    public function imageUploadUrl(StoreProductImageUploadRequest $request): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->productService->createImageUploadUrl($request->validated('content_type')),
+        ]);
     }
 
     public function destroy(Product $product): Response

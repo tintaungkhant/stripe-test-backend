@@ -20,6 +20,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::post('products/image-upload-url', [AdminProductController::class, 'imageUploadUrl'])->name('products.image-upload-url');
         Route::apiResource('products', AdminProductController::class);
         Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
     });
