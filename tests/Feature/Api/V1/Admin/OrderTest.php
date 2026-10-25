@@ -9,7 +9,7 @@ test('admin can list all orders', function () {
     $this->getJson(route('api.v1.admin.orders.index'))
         ->assertOk()
         ->assertJsonCount(3, 'data')
-        ->assertJsonStructure(['data' => [['id', 'status', 'product', 'user']]]);
+        ->assertJsonStructure(['data' => [['id', 'status', 'items', 'user']]]);
 });
 
 test('admin can filter orders by status', function () {

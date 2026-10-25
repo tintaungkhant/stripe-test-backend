@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CartItem;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -58,5 +59,15 @@ class CartService
     public function remove(User $user, Product $product): void
     {
         $user->cartItems()->where('product_id', $product->id)->delete();
+    }
+
+    /**
+     * Take what the order paid for out of the customer's cart.
+     */
+    public function removePurchased(Order $order): void
+    {
+        $order->user->cartItems()
+            ->whereIn('product_id', $order->items()->select('product_id'))
+            ->delete();
     }
 }

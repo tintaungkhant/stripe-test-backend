@@ -3,20 +3,27 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use Laravel\Cashier\Checkout;
 
 class PaymentService
 {
     /**
-     * Create a one-off Stripe Checkout session for the order.
+     * Create a one-off Stripe Checkout session with a line item per order item.
      *
      * The order id travels in the session metadata so the webhook can find it later.
      */
     public function createCheckoutSession(Order $order): Checkout
     {
-        return $order->user->checkoutCharge(
-            amount: $this->toCents($order->total_price),
-            name: $order->product->name,
+        return $order->user->checkout(
+            items: $order->items->map(fn (OrderItem $item) => [
+                'price_data' => [
+                    'currency' => $order->user->preferredCurrency(),
+                    'product_data' => ['name' => $item->product->name],
+                    'unit_amount' => $this->toCents($item->price),
+                ],
+                'quantity' => $item->quantity,
+            ])->all(),
             sessionOptions: [
                 'success_url' => $this->frontendUrl("/checkout/success?order={$order->id}&session_id={CHECKOUT_SESSION_ID}"),
                 'cancel_url' => $this->frontendUrl("/checkout/cancel?order={$order->id}"),

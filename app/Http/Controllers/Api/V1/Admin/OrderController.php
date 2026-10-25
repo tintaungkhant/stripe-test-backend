@@ -25,6 +25,6 @@ class OrderController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        return new OrderResource($order->load(['product', 'user']));
+        return new OrderResource($order->load(['items.product', 'user']));
     }
 }

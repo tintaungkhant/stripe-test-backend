@@ -2,22 +2,25 @@
 
 namespace App\Services;
 
+use App\Models\CartItem;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
 {
-    public function __construct(private PaymentService $paymentService) {}
+    public function __construct(
+        private PaymentService $paymentService,
+        private CartService $cartService,
+    ) {}
 
     /**
      * @return LengthAwarePaginator<int, Order>
      */
     public function paginateForUser(User $user, int $perPage = 15): LengthAwarePaginator
     {
-        return $user->orders()->with('product')->latest()->paginate($perPage);
+        return $user->orders()->with('items.product')->latest()->paginate($perPage);
     }
 
     /**
@@ -25,40 +28,48 @@ class OrderService
      */
     public function paginateAll(?string $status = null, int $perPage = 15): LengthAwarePaginator
     {
-        return Order::with(['product', 'user'])
+        return Order::with(['items.product', 'user'])
             ->when($status, fn ($query) => $query->where('status', $status))
             ->latest()
             ->paginate($perPage);
     }
 
     /**
-     * Create a pending order and a Stripe Checkout session the customer pays through.
+     * Turn the customer's cart into a pending order and a Stripe Checkout session they pay through.
      *
-     * The price is copied from the product so later price changes don't affect this order.
+     * Prices are copied from the products so later price changes don't affect this order.
+     * The cart is left alone until Stripe confirms payment, so a cancelled checkout keeps it.
      *
      * @return array{order: Order, checkout_url: string}
      */
-    public function checkout(User $user, Product $product): array
+    public function checkout(User $user): array
     {
-        return DB::transaction(function () use ($user, $product) {
+        $cartItems = $this->cartService->items($user);
+
+        return DB::transaction(function () use ($user, $cartItems) {
             $order = $user->orders()->create([
-                'product_id' => $product->id,
-                'total_price' => $product->price,
+                'total_price' => $this->cartService->total($cartItems),
             ]);
 
-            $checkout = $this->paymentService->createCheckoutSession($order);
+            $order->items()->createMany($cartItems->map(fn (CartItem $item) => [
+                'product_id' => $item->product_id,
+                'quantity' => $item->quantity,
+                'price' => $item->product->price,
+            ]));
+
+            $checkout = $this->paymentService->createCheckoutSession($order->load('items.product'));
 
             $order->update(['stripe_checkout_session_id' => $checkout->id]);
 
             return [
-                'order' => $order->load('product'),
+                'order' => $order,
                 'checkout_url' => $checkout->url,
             ];
         });
     }
 
     /**
-     * Mark the order behind a Stripe Checkout session as paid.
+     * Mark the order behind a Stripe Checkout session as paid and take its products out of the cart.
      *
      * Stripe may deliver the same webhook more than once, so this is safe to call repeatedly.
      */
@@ -74,6 +85,8 @@ class OrderService
             'status' => Order::STATUS_PAID,
             'paid_at' => now(),
         ]);
+
+        $this->cartService->removePurchased($order);
 
         return $order;
     }

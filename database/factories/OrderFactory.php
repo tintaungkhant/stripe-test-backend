@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Order;
-use App\Models\Product;
+use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
@@ -25,13 +25,28 @@ class OrderFactory extends Factory
 
         return [
             'user_id' => User::factory(),
-            'product_id' => Product::factory(),
-            'total_price' => fn (array $attributes) => Product::withTrashed()->find($attributes['product_id'])->price,
+            'total_price' => 0,
             'status' => Order::STATUS_PENDING,
             'stripe_checkout_session_id' => 'cs_test_'.Str::random(24),
             'created_at' => $createdAt,
             'updated_at' => $createdAt,
         ];
+    }
+
+    /**
+     * Give orders created without items one item, then total up the items.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Order $order) {
+            if ($order->items()->doesntExist()) {
+                OrderItem::factory()->for($order)->create();
+            }
+
+            $totalPrice = $order->items()->get()->sum(fn (OrderItem $item) => $item->price * $item->quantity);
+
+            Order::withoutTimestamps(fn () => $order->update(['total_price' => $totalPrice]));
+        });
     }
 
     /**

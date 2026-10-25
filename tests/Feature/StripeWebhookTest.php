@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CartItem;
 use App\Models\Order;
 use Illuminate\Support\Carbon;
 
@@ -67,4 +68,28 @@ test('duplicate webhooks do not change paid_at', function () {
 test('unknown session id is ignored', function () {
     $this->postJson(route('cashier.webhook'), checkoutSessionPayload('cs_test_unknown'))
         ->assertOk();
+});
+
+test('paid order products are taken out of the cart', function () {
+    $order = Order::factory()->create();
+    $purchased = CartItem::factory()->for($order->user)->for($order->items->first()->product)->create();
+    $stillWanted = CartItem::factory()->for($order->user)->create();
+    $otherCustomers = CartItem::factory()->for($order->items->first()->product)->create();
+
+    $this->postJson(route('cashier.webhook'), checkoutSessionPayload($order->stripe_checkout_session_id))
+        ->assertOk();
+
+    $this->assertModelMissing($purchased);
+    $this->assertModelExists($stillWanted);
+    $this->assertModelExists($otherCustomers);
+});
+
+test('unpaid checkout session keeps the cart', function () {
+    $order = Order::factory()->create();
+    $cartItem = CartItem::factory()->for($order->user)->for($order->items->first()->product)->create();
+
+    $this->postJson(route('cashier.webhook'), checkoutSessionPayload($order->stripe_checkout_session_id, paymentStatus: 'unpaid'))
+        ->assertOk();
+
+    $this->assertModelExists($cartItem);
 });
