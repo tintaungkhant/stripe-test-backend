@@ -45,4 +45,25 @@ class OrderService
             ];
         });
     }
+
+    /**
+     * Mark the order behind a Stripe Checkout session as paid.
+     *
+     * Stripe may deliver the same webhook more than once, so this is safe to call repeatedly.
+     */
+    public function markAsPaid(string $checkoutSessionId): ?Order
+    {
+        $order = Order::where('stripe_checkout_session_id', $checkoutSessionId)->first();
+
+        if (! $order || $order->isPaid()) {
+            return $order;
+        }
+
+        $order->update([
+            'status' => Order::STATUS_PAID,
+            'paid_at' => now(),
+        ]);
+
+        return $order;
+    }
 }
