@@ -18,14 +18,22 @@ class PaymentService
             amount: $this->toCents($order->total_price),
             name: $order->product->name,
             sessionOptions: [
-                'success_url' => url('/checkout/success').'?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => url('/checkout/cancel'),
+                'success_url' => $this->frontendUrl("/checkout/success?order={$order->id}&session_id={CHECKOUT_SESSION_ID}"),
+                'cancel_url' => $this->frontendUrl("/checkout/cancel?order={$order->id}"),
                 'client_reference_id' => (string) $order->id,
                 'metadata' => [
                     'order_id' => $order->id,
                 ],
             ],
         );
+    }
+
+    /**
+     * Build a URL on the storefront, where Stripe sends the customer back.
+     */
+    private function frontendUrl(string $path): string
+    {
+        return rtrim(config('app.frontend_url'), '/').$path;
     }
 
     /**
