@@ -17,9 +17,19 @@ class ProductFactory extends Factory
      */
     public function definition(): array
     {
+        $topic = fake()->randomElement([
+            'Laravel', 'Vue.js', 'React', 'Tailwind CSS', 'PHP', 'Stripe Payments',
+            'Docker', 'UI Design', 'Photography', 'Productivity',
+        ]);
+
+        $format = fake()->randomElement([
+            'Masterclass', 'E-book', 'Starter Kit', 'Video Course',
+            'Template Pack', 'Cheat Sheet', 'Icon Set', 'Workshop Recording',
+        ]);
+
         return [
-            'name' => fake()->words(3, true),
-            'price' => fake()->randomFloat(2, 1, 200),
+            'name' => "{$topic} {$format}",
+            'price' => fake()->randomElement([4.99, 9.99, 19.99, 29.99, 49.99, 79.99, 129.00]),
         ];
     }
 }
